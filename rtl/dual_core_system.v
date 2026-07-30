@@ -28,6 +28,7 @@ module dual_core_system #(
     wire [31:0] core0_mem_wdata;
     wire [31:0] core0_mem_rdata;
     wire        core0_mem_ready;
+    wire        core0_mem_req = core0_mem_read | core0_mem_write;
 
     // ==========================================
     // 2. Core 1 connection wires with instruction memory and its cache
@@ -40,6 +41,7 @@ module dual_core_system #(
     wire [31:0] core1_mem_wdata;
     wire [31:0] core1_mem_rdata;
     wire        core1_mem_ready;
+    wire        core1_mem_req = core1_mem_read | core1_mem_write;
 
     // ==========================================
     // 3. Connection wires between cache adapters and the shared bus subsystem
