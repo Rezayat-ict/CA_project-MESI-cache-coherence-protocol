@@ -36,7 +36,7 @@ module instruction_memory #(
         $display("Loading %d instructions from file %s", num_instructions, INIT_FILE);
 
         for (i = 0;(i < num_instructions && i < MEM_SIZE); i = i + 1) begin
-            scan_result = $fscanf(file_id, "%b\n", mem[i]);
+            scan_result = $fscanf(file_id, "%b", mem[i]);
             if (scan_result != 1) begin
                 $display("Error: Could not read instruction %d from file %s", i, INIT_FILE);
                 $fclose(file_id);
