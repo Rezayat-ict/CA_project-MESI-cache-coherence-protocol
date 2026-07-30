@@ -53,19 +53,19 @@ module dual_core_MESI_tb;
         // Checking Core 0 registers based on assembly program:
         // $t0 (Reg 8) = 43, $t1 (Reg 9) = 0, $t2 (Reg 10) = 43
         $display("Core 0 Register Check:");
-        $display("  $t0 (R8)  = %0d (Expected: 43)", dut.core0.register_file_unit.registers[8]);
-        $display("  $t1 (R9)  = %0d (Expected: 0)",  dut.core0.register_file_unit.registers[9]);
-        $display("  $t2 (R10) = %0d (Expected: 43)", dut.core0.register_file_unit.registers[10]);
+        $display("  $t0 (R8)  = %0d (Expected: 43)", dut.core0.rf_inst.rf[8]);
+        $display("  $t1 (R9)  = %0d (Expected: 0)",  dut.core0.rf_inst.rf[9]);
+        $display("  $t2 (R10) = %0d (Expected: 43)", dut.core0.rf_inst.rf[10]);
 
         // Checking Core 1 registers based on assembly program:
         // $s0 (Reg 16) = 42, $s1 (Reg 17) = 0, $s2 (Reg 18) = 0, $s3 (Reg 19) = 99, $t1 (Reg 9) = 99
         $display("--------------------------------------------------");
         $display("Core 1 Register Check:");
-        $display("  $s0 (R16) = %0d (Expected: 42)", dut.core1.register_file_unit.registers[16]);
-        $display("  $s1 (R17) = %0d (Expected: 0)",  dut.core1.register_file_unit.registers[17]);
-        $display("  $s2 (R18) = %0d (Expected: 0)",  dut.core1.register_file_unit.registers[18]);
-        $display("  $s3 (R19) = %0d (Expected: 99)", dut.core1.register_file_unit.registers[19]);
-        $display("  $t1 (R9)  = %0d (Expected: 99)", dut.core1.register_file_unit.registers[9]);
+        $display("  $s0 (R16) = %0d (Expected: 42)", dut.core1.rf_inst.rf[16]);
+        $display("  $s1 (R17) = %0d (Expected: 0)",  dut.core1.rf_inst.rf[17]);
+        $display("  $s2 (R18) = %0d (Expected: 0)",  dut.core1.rf_inst.rf[18]);
+        $display("  $s3 (R19) = %0d (Expected: 99)", dut.core1.rf_inst.rf[19]);
+        $display("  $t1 (R9)  = %0d (Expected: 99)", dut.core1.rf_inst.rf[9]);
         $display("--------------------------------------------------");
 
         $display("Simulation Finished.");

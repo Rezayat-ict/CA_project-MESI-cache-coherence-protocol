@@ -54,4 +54,5 @@ module instruction_memory #(
             instruction = 32'b00100000000000000000000000000000; // addi $zero, $zero, 0 instruction
         end
     end
-    
+
+endmodule

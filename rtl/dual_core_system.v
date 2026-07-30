@@ -22,7 +22,7 @@ module dual_core_system #(
     // ==========================================
     wire [31:0] core0_pc;
     wire [31:0] core0_instruction;
-    wire        core0_mem_req;
+    wire        core0_mem_read;
     wire        core0_mem_write;
     wire [31:0] core0_mem_addr;
     wire [31:0] core0_mem_wdata;
@@ -34,7 +34,7 @@ module dual_core_system #(
     // ==========================================
     wire [31:0] core1_pc;
     wire [31:0] core1_instruction;
-    wire        core1_mem_req;
+    wire        core1_mem_read;
     wire        core1_mem_write;
     wire [31:0] core1_mem_addr;
     wire [31:0] core1_mem_wdata;
@@ -88,15 +88,15 @@ module dual_core_system #(
     // ==========================================
     mips_core core0 (
         .clk(clk),
-        .reset(reset),
-        .pc(core0_pc),
-        .instruction(core0_instruction),
-        .mem_req(core0_mem_req),
+        .rst(reset),
+        .instr_addr(core0_pc),
+        .instr_data(core0_instruction),
+        .mem_read(core0_mem_read),
         .mem_write(core0_mem_write),
         .mem_addr(core0_mem_addr),
         .mem_wdata(core0_mem_wdata),
         .mem_rdata(core0_mem_rdata),
-        .mem_ready(core0_mem_ready)
+        .cpu_ready(core0_mem_ready)
     );
 
     // ==========================================
@@ -116,15 +116,15 @@ module dual_core_system #(
     // ==========================================
     mips_core core1 (
         .clk(clk),
-        .reset(reset),
-        .pc(core1_pc),
-        .instruction(core1_instruction),
-        .mem_req(core1_mem_req),
+        .rst(reset),
+        .instr_addr(core1_pc),
+        .instr_data(core1_instruction),
+        .mem_read(core1_mem_read),
         .mem_write(core1_mem_write),
         .mem_addr(core1_mem_addr),
         .mem_wdata(core1_mem_wdata),
         .mem_rdata(core1_mem_rdata),
-        .mem_ready(core1_mem_ready)
+        .cpu_ready(core1_mem_ready)
     );
 
     // ==========================================
@@ -231,8 +231,8 @@ module dual_core_system #(
         .cache1_cmd(cache1_bus_cmd),
         .cache1_addr(cache1_bus_addr),
         .cache1_wdata(cache1_bus_wdata),
-        .cache1_grant(cache1_grant),
-        .cache1_done(cache1_done),
+        .cache1_grant(cache1_bus_grant),
+        .cache1_done(cache1_bus_done),
         .cache1_rdata(cache1_bus_rdata),
         .cache1_shared(cache1_bus_shared),
 

@@ -52,27 +52,27 @@ module dual_core_Independent_tb;
 
         // Checking Core 0 registers based on assembly program:
         $display("Core 0 Register Check (Vector Processing):");
-        $display("  $t1 (R9)  = %0d (Expected: 5)",  dut.core0.register_file_unit.registers[9]);
-        $display("  $t2 (R10) = %0d (Expected: 5)",  dut.core0.register_file_unit.registers[10]);
-        $display("  $t3 (R11) = %0d (Expected: 5)",  dut.core0.register_file_unit.registers[11]);
-        $display("  $t4 (R12) = %0d (Expected: 0)",  dut.core0.register_file_unit.registers[12]);
-        $display("  $t5 (R13) = %0d (Expected: 0)",  dut.core0.register_file_unit.registers[13]);
-        $display("  $t6 (R14) = %0d (Expected: 0)",  dut.core0.register_file_unit.registers[14]);
-        $display("  $s0 (R16) = %0d (Expected: 5)",  dut.core0.register_file_unit.registers[16]);
-        $display("  $s1 (R17) = %0d (Expected: 5)",  dut.core0.register_file_unit.registers[17]);
-        $display("  $s2 (R18) = %0d (Expected: 5)",  dut.core0.register_file_unit.registers[18]);
+        $display("  $t1 (R9)  = %0d (Expected: 5)",  dut.core0.rf_inst.rf[9]);
+        $display("  $t2 (R10) = %0d (Expected: 5)",  dut.core0.rf_inst.rf[10]);
+        $display("  $t3 (R11) = %0d (Expected: 5)",  dut.core0.rf_inst.rf[11]);
+        $display("  $t4 (R12) = %0d (Expected: 0)",  dut.core0.rf_inst.rf[12]);
+        $display("  $t5 (R13) = %0d (Expected: 0)",  dut.core0.rf_inst.rf[13]);
+        $display("  $t6 (R14) = %0d (Expected: 0)",  dut.core0.rf_inst.rf[14]);
+        $display("  $s0 (R16) = %0d (Expected: 5)",  dut.core0.rf_inst.rf[16]);
+        $display("  $s1 (R17) = %0d (Expected: 5)",  dut.core0.rf_inst.rf[17]);
+        $display("  $s2 (R18) = %0d (Expected: 5)",  dut.core0.rf_inst.rf[18]);
 
         // Checking Core 1 registers based on assembly program:
         $display("--------------------------------------------------");
         $display("Core 1 Register Check (Vector Loop Processing):");
-        $display("  $s4 (R20) = %0d (Expected: 0)",  dut.core1.register_file_unit.registers[20]);
-        $display("  $t7 (R15) = %0d (Expected: 1)",  dut.core1.register_file_unit.registers[15]);
-        $display("  $s1 (R17) = %0d (Expected: 33)", dut.core1.register_file_unit.registers[17]);
-        $display("  $s2 (R18) = %0d (Expected: 1)",  dut.core1.register_file_unit.registers[18]);
-        $display("  $t0 (R8)  = %0d (Expected: 0)",  dut.core1.register_file_unit.registers[8]);
-        $display("  $t1 (R9)  = %0d (Expected: 1)",  dut.core1.register_file_unit.registers[9]);
-        $display("  $t2 (R10) = %0d (Expected: 0)",  dut.core1.register_file_unit.registers[10]);
-        $display("  $t3 (R11) = %0d (Expected: 1)",  dut.core1.register_file_unit.registers[11]);
+        $display("  $s4 (R20) = %0d (Expected: 0)",  dut.core1.rf_inst.rf[20]);
+        $display("  $t7 (R15) = %0d (Expected: 1)",  dut.core1.rf_inst.rf[15]);
+        $display("  $s1 (R17) = %0d (Expected: 33)", dut.core1.rf_inst.rf[17]);
+        $display("  $s2 (R18) = %0d (Expected: 1)",  dut.core1.rf_inst.rf[18]);
+        $display("  $t0 (R8)  = %0d (Expected: 0)",  dut.core1.rf_inst.rf[8]);
+        $display("  $t1 (R9)  = %0d (Expected: 1)",  dut.core1.rf_inst.rf[9]);
+        $display("  $t2 (R10) = %0d (Expected: 0)",  dut.core1.rf_inst.rf[10]);
+        $display("  $t3 (R11) = %0d (Expected: 1)",  dut.core1.rf_inst.rf[11]);
         $display("--------------------------------------------------");
 
         $display("Simulation Finished.");
