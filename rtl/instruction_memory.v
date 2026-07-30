@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 
 module instruction_memory #(
-    parameter MEM_SIZE = 256
+    parameter MEM_SIZE = 256,
     parameter INIT_FILE = "instructions.txt"
 )(
     input wire [31:0] addr,
@@ -17,7 +17,7 @@ module instruction_memory #(
 
     initial begin
         for (i = 0; i < MEM_SIZE; i = i + 1) begin
-            mem[i] = 32'b0;
+            mem[i] = 32'b00100000000000000000000000000000; // addi $zero, $zero, 0 instruction
         end
 
         file_id = $fopen(INIT_FILE, "r");
@@ -51,7 +51,7 @@ module instruction_memory #(
         if (addr < 4 * MEM_SIZE) begin
             instruction = mem[addr>>2];
         end else begin
-            instruction = 32'b0;
+            instruction = 32'b00100000000000000000000000000000; // addi $zero, $zero, 0 instruction
         end
     end
     
