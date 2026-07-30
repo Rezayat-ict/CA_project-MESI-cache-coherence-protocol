@@ -20,8 +20,8 @@ module dual_core_Independent_tb;
         .LINE_WIDTH(LINE_WIDTH),
         .WORD_COUNT(WORD_COUNT),
         .MEM_LATENCY(MEM_LATENCY),
-        .INIT_FILE_0("../programs/Core0_Independent_DualCore_Test_decoded"),
-        .INIT_FILE_1("../programs/Core1_Independent_DualCore_Test_decoded")
+        .INIT_FILE_0("../programs/Core0_Independent_DualCore_Test_decoded.txt"),
+        .INIT_FILE_1("../programs/Core1_Independent_DualCore_Test_decoded.txt")
     ) dut (
         .clk(clk),
         .reset(reset),

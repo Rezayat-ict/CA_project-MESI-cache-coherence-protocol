@@ -20,8 +20,8 @@ module dual_core_MESI_tb;
         .LINE_WIDTH(LINE_WIDTH),
         .WORD_COUNT(WORD_COUNT),
         .MEM_LATENCY(MEM_LATENCY),
-        .INIT_FILE_0("../programs/Core0_MESI_Test_decoded"), // Path to decoded instruction files
-        .INIT_FILE_1("../programs/Core1_MESI_Test_decoded")  // Path to decoded instruction files
+        .INIT_FILE_0("../programs/Core0_MESI_Test_decoded.txt"), // Path to decoded instruction files
+        .INIT_FILE_1("../programs/Core1_MESI_Test_decoded.txt")  // Path to decoded instruction files
     ) dut (
         .clk(clk),
         .reset(reset),
