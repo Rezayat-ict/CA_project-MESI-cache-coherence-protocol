@@ -1,7 +1,7 @@
 `timescale 1ns/1ps
 `include "bus_defs.vh"
 
-module person3_subsystem #(
+module memory_subsystem #(
     parameter ADDR_WIDTH  = 32,
     parameter LINE_WIDTH  = 128,
     parameter WORD_COUNT  = 1024,
