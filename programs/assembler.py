@@ -60,7 +60,6 @@ def assemble_file(input_filepath):
 
         def imm_to_bin(imm_str, current_pc):
             if imm_str in labels:
-                # محاسبه Branch Offset بر اساس PC معادل استاندارد MIPS (PC = current_pc + 1)
                 offset = labels[imm_str] - (current_pc + 1)
                 val = offset
             else:
