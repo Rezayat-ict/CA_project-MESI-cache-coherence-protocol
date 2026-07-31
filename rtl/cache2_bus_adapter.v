@@ -141,7 +141,6 @@ module cache2_bus_adapter (
                 end
 
                 WR_WAIT_DROP: begin
-                    if (!cpu_req)
                         wrapper_state <= WR_IDLE;
                 end
 
