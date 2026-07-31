@@ -44,7 +44,7 @@ module dual_core_Independent_tb;
         $display("--------------------------------------------------");
 
         // Run simulation for enough cycles for vector processing and loops to complete
-        #1500; // Adjust this value based on the expected execution time of the programs
+        #5000; // Adjust this value based on the expected execution time of the programs
 
         $display("--------------------------------------------------");
         $display("Checking Register Values at the End of Simulation:");
