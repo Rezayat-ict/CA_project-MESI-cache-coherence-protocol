@@ -1,3 +1,4 @@
+`timescale 1ns/1ps
 module mips_core (
     input  wire        clk,
     input  wire        rst,
@@ -78,12 +79,17 @@ module mips_core (
     assign pc_plus4F = pcF + 32'd4; 
 
     always @(posedge clk) begin
-        if (rst || (branch_takenD || jumpD)) begin 
+        if (rst) begin
             instrD <= 32'd0;
             pc_plus4D <= 32'd0;
-        end else if (!stallD) begin 
-            instrD <= instr_data;
-            pc_plus4D <= pc_plus4F;
+        end else if (!stallD) begin
+            if (branch_takenD || jumpD) begin
+                instrD <= 32'd0;
+                pc_plus4D <= 32'd0;
+            end else begin
+                instrD <= instr_data;
+                pc_plus4D <= pc_plus4F;
+            end
         end
     end
 
@@ -91,7 +97,9 @@ module mips_core (
     assign rsD = instrD[25:21];
     assign rtD = instrD[20:16];
     assign rdD = instrD[15:11];
-    assign sign_immD = {{16{instrD[15]}}, instrD[15:0]};
+    assign sign_immD = (instrD[31:26] == 6'b001101) ?
+                       {16'b0, instrD[15:0]} :
+                       {{16{instrD[15]}}, instrD[15:0]};
 
     register_file rf_inst(
         .clk(clk), .rst(rst),
