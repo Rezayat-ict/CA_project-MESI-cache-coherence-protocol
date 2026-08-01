@@ -1,21 +1,38 @@
-# Dual-Core MIPS Processor with L1 Cache and MESI Protocol
+# Dual-Core MIPS Processor with L1 Cache, Victim Cache, and MESI Protocol
 
 ## Overview
 
 This project implements a dual-core MIPS processor system using Verilog.
 
-Each core contains a pipelined MIPS processor connected to a private L1 cache. 
-The system supports cache coherence between the two cores using the MESI cache coherence protocol.
+Each core contains a pipelined MIPS processor connected to a private L1 cache. The system supports cache coherence between the two cores using the MESI cache coherence protocol.
+
+In addition, each L1 cache is equipped with a **Victim Cache** to reduce conflict misses. The Victim Cache is placed between the L1 cache and the shared bus interface.
 
 The main components of the project include:
 
 - Dual-core MIPS processor
 - Five-stage pipeline architecture
 - Private L1 caches for each core
+- 4-entry Fully Associative Victim Cache for each L1 cache
 - Shared bus communication
 - MESI cache coherence protocol
 - Independent execution and coherence test scenarios
 
+---
+
+## Victim Cache
+
+Each processor core includes a dedicated Victim Cache located between the L1 cache and the bus arbiter.
+
+The Victim Cache has the following characteristics:
+
+- Capacity of **4 cache lines**
+- **Fully Associative** organization
+- Positioned between the **L1 Cache** and the **Bus Arbiter**
+
+Whenever a cache line is evicted from the L1 cache, it is first placed into the Victim Cache. On an L1 cache miss, the Victim Cache is checked before issuing a request to the shared bus, reducing conflict misses and unnecessary memory transactions.
+
+---
 
 ## Assembly Programs
 
@@ -30,6 +47,7 @@ Each generated file has the following format:
 
 These instruction files are loaded into the instruction memory of each core during simulation.
 
+---
 
 ## Requirements
 
@@ -41,83 +59,113 @@ The project has been tested using:
 
 Other Verilog simulators may also be used.
 
+---
 
-## Running Simulation with Icarus Verilog
+## Running Simulations
 
-The simulations can be run using different Verilog simulators.  
-For example, using **Icarus Verilog**, execute the following commands from the `tb` directory.
+The simulations can be run using different Verilog simulators.
 
-### Independent Execution Test
+For example, using **Icarus Verilog**, execute the following scripts **from the `tb` directory**.
 
-Compile:
+### Windows
 
-```bash
-iverilog -I ../rtl -o sim_indep dual_core_Independent_tb.v ../rtl/*.v
+```text
+run_all_tests.bat
 ```
 
-Run:
+or run each test individually:
 
-```bash
-vvp sim_indep
+```text
+run_independent.bat
+run_mesi.bat
+run_victim_cache.bat
 ```
 
-### MESI Protocol Test
-
-Compile:
+### Linux / macOS
 
 ```bash
-iverilog -I ../rtl -o sim_mesi dual_core_MESI_tb.v ../rtl/*.v
+chmod +x run_all_tests.sh
+./run_all_tests.sh
 ```
 
-Run:
+or run each test individually:
 
 ```bash
-vvp sim_mesi
+chmod +x run_*.sh
+
+./run_independent.sh
+./run_mesi.sh
+./run_victim_cache.sh
 ```
 
 The commands above are examples using Icarus Verilog. Other Verilog simulators can also be used with the corresponding compilation and simulation commands.
 
+---
 
 ## Testbenches
 
-Two main testbenches are provided to verify the functionality of the dual-core system.
+Three testbenches are provided to verify different parts of the design.
 
 ### 1. Independent Execution Test
 
 `dual_core_Independent_tb.v`
 
-This testbench verifies that both cores can execute independent programs correctly.
+This testbench verifies that both processor cores can execute independent programs correctly.
 
 The test includes:
-- Running separate programs on each core.
+
+- Running different programs on each core.
+- Verifying correct pipeline execution.
 - Checking the final register values of both cores.
-- Verifying that the expected results are produced after program execution.
 
-At the end of the simulation, the testbench automatically compares the actual register values with the expected values and reports the test result.
+At the end of the simulation, the expected register values are compared automatically and the testbench reports **PASS** or **FAIL**.
 
+---
 
 ### 2. MESI Protocol Test
 
 `dual_core_MESI_tb.v`
 
-This testbench verifies the cache coherence behavior between the two cores using the MESI protocol.
+This testbench verifies cache coherence between the two processor cores.
 
 The test includes:
-- Executing programs that require shared memory access.
-- Testing cache coherence operations between L1 caches.
-- Checking the final register values after all memory transactions.
 
-The testbench automatically validates the expected register values and reports whether the MESI protocol execution is correct.
+- Shared memory accesses.
+- Cache coherence transactions.
+- MESI state transitions.
+- Final register value verification.
 
+The expected register values are checked automatically and the testbench reports **PASS** or **FAIL**.
+
+---
+
+### 3. Victim Cache Test
+
+`tb_victim_cache.v`
+
+This testbench verifies the functionality of the Victim Cache.
+
+The test includes:
+
+- Cache line eviction from the L1 cache.
+- Victim Cache insertion.
+- Victim Cache hit handling.
+- Correct data retrieval from the Victim Cache.
+- Automatic verification of the expected behavior.
+
+The testbench reports **PASS** or **FAIL** at the end of the simulation.
+
+---
 
 ## Simulation Result
 
 Each testbench performs automatic verification at the end of the simulation.
 
-The final register values are compared against the expected values defined in the testbench.
+The final register values (or cache behavior for the Victim Cache test) are compared against the expected results defined in the testbench.
 
-A successful simulation should finish with a `PASS` message, indicating that the processor pipeline, cache subsystem, and (for the MESI test) cache coherence mechanism are operating correctly.
+A successful simulation finishes with a **PASS** message, indicating that the tested subsystem is functioning correctly.
 
+---
 
 ## Team Members
 
