@@ -123,5 +123,5 @@ A successful simulation should finish with a `PASS` message, indicating that the
 
 - Khorshid Bahoush
 - Fateme Keshavarz
-- MohammadReaz Rezayat
+- MohammadReza Rezayat
 - MohammadHossein Majdian
