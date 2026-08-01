@@ -1,3 +1,6 @@
+`timescale 1ns/1ps
+`include "bus_defs.vh"
+
 module l1_cache (
     input  wire         clk,
     input  wire         reset,
@@ -26,46 +29,64 @@ module l1_cache (
     output reg          snoop_response_valid,
     output reg          snoop_hit,
     output reg          snoop_dirty,
-    output reg  [127:0] snoop_data
+    output reg  [127:0] snoop_data,
+
+    output reg          evict_valid,
+    output reg  [31:0]  evict_addr,
+    output reg  [127:0] evict_data,
+    output reg  [1:0]   evict_state
 );
 
+    localparam RAW_CMD_IDLE       = 3'b000;
+    localparam RAW_CMD_ALLOCATE   = 3'b001;
+    localparam RAW_CMD_WRITE_BACK = 3'b010;
+    localparam RAW_CMD_UPGRADE    = 3'b011;
 
-    localparam BUS_CMD_IDLE       = 3'b000;
-    localparam BUS_CMD_READ       = 3'b001; // Read Miss
-    localparam BUS_CMD_WRITE_BACK = 3'b010; // Evict Dirty Block
-    localparam BUS_CMD_UPGRADE    = 3'b011; // Invalidate Others (S -> M)
+    localparam STATE_I = 2'b00;
+    localparam STATE_S = 2'b01;
+    localparam STATE_E = 2'b10;
+    localparam STATE_M = 2'b11;
 
-    // MESI states
-    localparam STATE_I = 2'b00; 
-    localparam STATE_S = 2'b01; 
-    localparam STATE_E = 2'b10; 
-    localparam STATE_M = 2'b11; 
+    localparam FSM_IDLE           = 3'b000;
+    localparam FSM_ALLOCATE_REQ   = 3'b001;
+    localparam FSM_ALLOCATE_WAIT  = 3'b010;
+    localparam FSM_WRITEBACK_REQ  = 3'b011;
+    localparam FSM_WRITEBACK_WAIT = 3'b100;
+    localparam FSM_UPGRADE_REQ    = 3'b101;
+    localparam FSM_UPGRADE_WAIT   = 3'b110;
 
-    // Main FSM states
-    localparam FSM_IDLE         = 3'b000;
-    localparam FSM_ALLOCATE_REQ = 3'b001;
-    localparam FSM_ALLOCATE_WAIT= 3'b010;
-    localparam FSM_WRITEBACK_REQ= 3'b011;
-    localparam FSM_WRITEBACK_WAIT=3'b100;
-    localparam FSM_UPGRADE_REQ  = 3'b101;
-    localparam FSM_UPGRADE_WAIT = 3'b110;
+    reg [2:0] state;
+    reg [2:0] next_state;
 
-    reg [2:0] state, next_state;
+    reg [127:0] cache_data [0:3];
+    reg [25:0]  cache_tag  [0:3];
+    reg [1:0]   mesi_state [0:3];
 
-    reg [127:0] cache_data  [0:3];
-    reg [25:0]  cache_tag   [0:3];
-    reg [1:0]   mesi_state  [0:3];
+    wire [1:0]  cpu_index   = cpu_addr[5:4];
+    wire [25:0] cpu_tag     = cpu_addr[31:6];
+    wire [1:0]  snoop_index = snoop_addr[5:4];
+    wire [25:0] snoop_tag   = snoop_addr[31:6];
 
-    wire [1:0]  cpu_index  = cpu_addr[5:4];
-    wire [25:0] cpu_tag    = cpu_addr[31:6];
-    wire [1:0]  snoop_index= snoop_addr[5:4];
-    wire [25:0] snoop_tag  = snoop_addr[31:6];
+    wire is_hit = cpu_req &&
+                  (mesi_state[cpu_index] != STATE_I) &&
+                  (cache_tag[cpu_index] == cpu_tag);
 
-    wire is_hit = cpu_req && (mesi_state[cpu_index] != STATE_I) && (cache_tag[cpu_index] == cpu_tag);
+    wire snoop_line_hit = snoop_valid &&
+                          (mesi_state[snoop_index] != STATE_I) &&
+                          (cache_tag[snoop_index] == snoop_tag);
+
+    wire snoop_occupies_cpu_index = snoop_line_hit &&
+                                    (snoop_index == cpu_index);
+
+    wire clean_replacement = (state == FSM_IDLE) &&
+                             cpu_req &&
+                             !is_hit &&
+                             !snoop_occupies_cpu_index &&
+                             ((mesi_state[cpu_index] == STATE_S) ||
+                              (mesi_state[cpu_index] == STATE_E));
 
     integer i;
 
-    //MESI FSM
     always @(posedge clk or posedge reset) begin
         if (reset) begin
             state <= FSM_IDLE;
@@ -74,11 +95,18 @@ module l1_cache (
                 cache_tag[i]  <= 26'b0;
                 cache_data[i] <= 128'b0;
             end
-        end else begin
-            state <= next_state;
+        end
+        else begin
+            if (snoop_occupies_cpu_index &&
+                (state == FSM_UPGRADE_REQ) &&
+                ((snoop_cmd == `BUS_RDX) || (snoop_cmd == `BUS_UPGR)))
+                state <= FSM_ALLOCATE_REQ;
+            else
+                state <= next_state;
 
-            if (state == FSM_IDLE && is_hit) begin
-                if (cpu_write) begin
+            if (!snoop_occupies_cpu_index) begin
+                if (state == FSM_IDLE && is_hit && cpu_write &&
+                    (mesi_state[cpu_index] != STATE_S)) begin
                     mesi_state[cpu_index] <= STATE_M;
                     case (cpu_addr[3:2])
                         2'b00: cache_data[cpu_index][31:0]   <= cpu_wdata;
@@ -87,84 +115,132 @@ module l1_cache (
                         2'b11: cache_data[cpu_index][127:96] <= cpu_wdata;
                     endcase
                 end
-            end 
-			
-			else if (state == FSM_ALLOCATE_WAIT && bus_done) begin
-                cache_tag[cpu_index]  <= cpu_tag;
-                
-                if (cpu_write) begin
-                    // Write Miss: Update block and set to M
+                else if (clean_replacement) begin
+                    mesi_state[cpu_index] <= STATE_I;
+                end
+                else if (state == FSM_WRITEBACK_WAIT && bus_done) begin
+                    mesi_state[cpu_index] <= STATE_I;
+                end
+                else if (state == FSM_ALLOCATE_WAIT && bus_done) begin
+                    cache_tag[cpu_index] <= cpu_tag;
+                    if (cpu_write) begin
+                        mesi_state[cpu_index] <= STATE_M;
+                        case (cpu_addr[3:2])
+                            2'b00: cache_data[cpu_index] <= {bus_rdata[127:32], cpu_wdata};
+                            2'b01: cache_data[cpu_index] <= {bus_rdata[127:64], cpu_wdata, bus_rdata[31:0]};
+                            2'b10: cache_data[cpu_index] <= {bus_rdata[127:96], cpu_wdata, bus_rdata[63:0]};
+                            2'b11: cache_data[cpu_index] <= {cpu_wdata, bus_rdata[95:0]};
+                        endcase
+                    end
+                    else begin
+                        cache_data[cpu_index] <= bus_rdata;
+                        mesi_state[cpu_index] <= bus_shared ? STATE_S : STATE_E;
+                    end
+                end
+                else if (state == FSM_UPGRADE_WAIT && bus_done) begin
                     mesi_state[cpu_index] <= STATE_M;
                     case (cpu_addr[3:2])
-                        2'b00: cache_data[cpu_index] <= {bus_rdata[127:32], cpu_wdata};
-                        2'b01: cache_data[cpu_index] <= {bus_rdata[127:64], cpu_wdata, bus_rdata[31:0]};
-                        2'b10: cache_data[cpu_index] <= {bus_rdata[127:96], cpu_wdata, bus_rdata[63:0]};
-                        2'b11: cache_data[cpu_index] <= {cpu_wdata, bus_rdata[95:0]};
+                        2'b00: cache_data[cpu_index][31:0]   <= cpu_wdata;
+                        2'b01: cache_data[cpu_index][63:32]  <= cpu_wdata;
+                        2'b10: cache_data[cpu_index][95:64]  <= cpu_wdata;
+                        2'b11: cache_data[cpu_index][127:96] <= cpu_wdata;
                     endcase
-                end 
-				else begin
-                    // Read Miss: Set state according to bus_shared
-                    cache_data[cpu_index] <= bus_rdata;
-                    mesi_state[cpu_index] <= bus_shared ? STATE_S : STATE_E;
                 end
-            end else if (state == FSM_UPGRADE_WAIT && bus_done) begin
-                // S -> M Upgrade complete
-                mesi_state[cpu_index] <= STATE_M;
-                case (cpu_addr[3:2])
-                    2'b00: cache_data[cpu_index][31:0]   <= cpu_wdata;
-                    2'b01: cache_data[cpu_index][63:32]  <= cpu_wdata;
-                    2'b10: cache_data[cpu_index][95:64]  <= cpu_wdata;
-                    2'b11: cache_data[cpu_index][127:96] <= cpu_wdata;
+            end
+
+            if (snoop_line_hit) begin
+                case (snoop_cmd)
+                    `BUS_RD: begin
+                        if ((mesi_state[snoop_index] == STATE_M) ||
+                            (mesi_state[snoop_index] == STATE_E))
+                            mesi_state[snoop_index] <= STATE_S;
+                    end
+                    `BUS_RDX,
+                    `BUS_UPGR: begin
+                        mesi_state[snoop_index] <= STATE_I;
+                    end
+                    default: begin
+                    end
                 endcase
             end
         end
     end
 
-    // Next state logic
     always @(*) begin
         next_state = state;
+
         case (state)
             FSM_IDLE: begin
-                if (cpu_req) begin
+                if (snoop_occupies_cpu_index) begin
+                    next_state = FSM_IDLE;
+                end
+                else if (cpu_req) begin
                     if (is_hit) begin
-                        if (cpu_write && mesi_state[cpu_index] == STATE_S)
-                            next_state = FSM_UPGRADE_REQ; 
+                        if (cpu_write && (mesi_state[cpu_index] == STATE_S))
+                            next_state = FSM_UPGRADE_REQ;
                         else
-                            next_state = FSM_IDLE; 
-                    end else begin
-                        if (mesi_state[cpu_index] == STATE_M)
-                            next_state = FSM_WRITEBACK_REQ;
-                        else
-                            next_state = FSM_ALLOCATE_REQ;
+                            next_state = FSM_IDLE;
+                    end
+                    else if (mesi_state[cpu_index] == STATE_M) begin
+                        next_state = FSM_WRITEBACK_REQ;
+                    end
+                    else begin
+                        next_state = FSM_ALLOCATE_REQ;
                     end
                 end
             end
 
-            // Write-Back evicted line
-            FSM_WRITEBACK_REQ:  if (bus_grant) next_state = FSM_WRITEBACK_WAIT;
-            FSM_WRITEBACK_WAIT: if (bus_done)  next_state = FSM_ALLOCATE_REQ;
+            FSM_WRITEBACK_REQ: begin
+                if (bus_grant)
+                    next_state = FSM_WRITEBACK_WAIT;
+            end
 
-            // Read / Write allocate
-            FSM_ALLOCATE_REQ:   if (bus_grant) next_state = FSM_ALLOCATE_WAIT;
-            FSM_ALLOCATE_WAIT:  if (bus_done)  next_state = FSM_IDLE;
+            FSM_WRITEBACK_WAIT: begin
+                if (bus_done)
+                    next_state = FSM_ALLOCATE_REQ;
+            end
 
-            // Upgrade state (S -> M)
-            FSM_UPGRADE_REQ:    if (bus_grant) next_state = FSM_UPGRADE_WAIT;
-            FSM_UPGRADE_WAIT:   if (bus_done)  next_state = FSM_IDLE;
+            FSM_ALLOCATE_REQ: begin
+                if (bus_grant)
+                    next_state = FSM_ALLOCATE_WAIT;
+            end
 
-            default: next_state = FSM_IDLE;
+            FSM_ALLOCATE_WAIT: begin
+                if (bus_done)
+                    next_state = FSM_IDLE;
+            end
+
+            FSM_UPGRADE_REQ: begin
+                if (bus_grant)
+                    next_state = FSM_UPGRADE_WAIT;
+            end
+
+            FSM_UPGRADE_WAIT: begin
+                if (bus_done)
+                    next_state = FSM_IDLE;
+            end
+
+            default: begin
+                next_state = FSM_IDLE;
+            end
         endcase
     end
 
     always @(*) begin
-        cpu_ready   = 1'b0;
-        cpu_rdata   = 32'b0;
-        bus_req     = 1'b0;
-        bus_cmd     = BUS_CMD_IDLE;
-        bus_addr    = 32'b0;
-        bus_wdata   = 128'b0;
+        cpu_ready = 1'b0;
+        cpu_rdata = 32'b0;
+        bus_req   = 1'b0;
+        bus_cmd   = RAW_CMD_IDLE;
+        bus_addr  = 32'b0;
+        bus_wdata = 128'b0;
 
-        if (state == FSM_IDLE && is_hit) begin
+        evict_valid = clean_replacement;
+        evict_addr  = {cache_tag[cpu_index], cpu_index, 4'b0000};
+        evict_data  = cache_data[cpu_index];
+        evict_state = mesi_state[cpu_index];
+
+        if ((state == FSM_IDLE) && is_hit && !snoop_occupies_cpu_index &&
+            !(cpu_write && (mesi_state[cpu_index] == STATE_S))) begin
             cpu_ready = 1'b1;
             case (cpu_addr[3:2])
                 2'b00: cpu_rdata = cache_data[cpu_index][31:0];
@@ -175,59 +251,44 @@ module l1_cache (
         end
 
         case (state)
-            FSM_WRITEBACK_REQ, FSM_WRITEBACK_WAIT: begin
+            FSM_WRITEBACK_REQ,
+            FSM_WRITEBACK_WAIT: begin
                 bus_req   = 1'b1;
-                bus_cmd   = BUS_CMD_WRITE_BACK;
-                bus_addr  = {cache_tag[cpu_index], cpu_index, 4'b0000}; // Block-Aligned evicted address
+                bus_cmd   = RAW_CMD_WRITE_BACK;
+                bus_addr  = {cache_tag[cpu_index], cpu_index, 4'b0000};
                 bus_wdata = cache_data[cpu_index];
             end
-            FSM_ALLOCATE_REQ, FSM_ALLOCATE_WAIT: begin
-                bus_req   = 1'b1;
-                bus_cmd   = BUS_CMD_READ;
-                bus_addr  = {cpu_addr[31:4], 4'b0000}; // Block-Aligned current address
+
+            FSM_ALLOCATE_REQ,
+            FSM_ALLOCATE_WAIT: begin
+                bus_req  = 1'b1;
+                bus_cmd  = RAW_CMD_ALLOCATE;
+                bus_addr = {cpu_addr[31:4], 4'b0000};
             end
-            FSM_UPGRADE_REQ, FSM_UPGRADE_WAIT: begin
-                bus_req   = 1'b1;
-                bus_cmd   = BUS_CMD_UPGRADE;
-                bus_addr  = {cpu_addr[31:4], 4'b0000};
+
+            FSM_UPGRADE_REQ,
+            FSM_UPGRADE_WAIT: begin
+                bus_req  = 1'b1;
+                bus_cmd  = RAW_CMD_UPGRADE;
+                bus_addr = {cpu_addr[31:4], 4'b0000};
+            end
+
+            default: begin
             end
         endcase
     end
 
-    //Snoop logic
     always @(*) begin
-        snoop_response_valid = 1'b0;
+        snoop_response_valid = snoop_valid;
         snoop_hit            = 1'b0;
         snoop_dirty          = 1'b0;
         snoop_data           = 128'b0;
 
-        if (snoop_valid) begin
-            if ((mesi_state[snoop_index] != STATE_I) && (cache_tag[snoop_index] == snoop_tag)) begin
-                snoop_response_valid = 1'b1;
-                snoop_hit            = 1'b1;
-
-                if (mesi_state[snoop_index] == STATE_M) begin
-                    snoop_dirty = 1'b1;
-                    snoop_data  = cache_data[snoop_index];
-                end
-            end
-        end
-    end
-
-    // Snoop state transitions
-    always @(posedge clk) begin
-        if (!reset && snoop_valid) begin
-            if ((mesi_state[snoop_index] != STATE_I) && (cache_tag[snoop_index] == snoop_tag)) begin
-                case (snoop_cmd)
-                    BUS_CMD_READ: begin
-                        if (mesi_state[snoop_index] == STATE_M || mesi_state[snoop_index] == STATE_E) begin
-                            mesi_state[snoop_index] <= STATE_S;
-                        end
-                    end
-                    BUS_CMD_UPGRADE, BUS_CMD_WRITE_BACK: begin
-                        mesi_state[snoop_index] <= STATE_I;
-                    end
-                endcase
+        if (snoop_line_hit) begin
+            snoop_hit = 1'b1;
+            if (mesi_state[snoop_index] == STATE_M) begin
+                snoop_dirty = 1'b1;
+                snoop_data  = cache_data[snoop_index];
             end
         end
     end
