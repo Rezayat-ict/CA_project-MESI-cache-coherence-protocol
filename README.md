@@ -70,33 +70,19 @@ For example, using **Icarus Verilog**, execute the following scripts **from the 
 ### Windows
 
 ```text
-run_all_tests.bat
+run_windows.bat
 ```
 
-or run each test individually:
-
-```text
-run_independent.bat
-run_mesi.bat
-run_victim_cache.bat
-```
+or run each test individually.
 
 ### Linux / macOS
 
 ```bash
-chmod +x run_all_tests.sh
-./run_all_tests.sh
+chmod +x run_linux.sh
+./run_linux.sh
 ```
 
-or run each test individually:
-
-```bash
-chmod +x run_*.sh
-
-./run_independent.sh
-./run_mesi.sh
-./run_victim_cache.sh
-```
+or run each test individually.
 
 The commands above are examples using Icarus Verilog. Other Verilog simulators can also be used with the corresponding compilation and simulation commands.
 
