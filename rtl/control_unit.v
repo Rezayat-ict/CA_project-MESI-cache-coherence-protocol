@@ -13,7 +13,7 @@ module control_unit (
     output reg  [2:0] alu_control
 );
     wire [1:0] alu_op; 
-    // Main Decoder
+  
     assign {reg_write, reg_dst, alu_src, branch, bne, mem_write, mem_read, mem_to_reg, jump, alu_op[1], alu_op[0]} = 
         (opcode == 6'b000000) ? 11'b11000000010 : // R-Type (add, sub, and, or, slt)
         (opcode == 6'b001000) ? 11'b10100000000 : // addi
@@ -25,7 +25,6 @@ module control_unit (
         (opcode == 6'b000010) ? 11'b00000000100 : // j
                                 11'b00000000000;  // Default
 
-    // ALU Decoder
     always @(*) begin
         case (alu_op)
             2'b00: alu_control = 3'b010; // ADD (lw, sw, addi)

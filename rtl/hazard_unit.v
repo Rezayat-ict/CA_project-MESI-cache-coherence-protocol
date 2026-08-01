@@ -11,7 +11,7 @@ module hazard_unit (
     output wire       flushE, flushD, flushW
 );
 
-    // 1. Data Forwarding for Execute Stage
+    // Data Forwarding for Execute Stage
     always @(*) begin
         forward_aE = 2'b00;
         if ((rsE != 0) && (rsE == write_regM) && reg_writeM) 
@@ -26,11 +26,11 @@ module hazard_unit (
             forward_bE = 2'b01;
     end
 
-    // 2. Data Forwarding for Decode Stage (Branch resolution)
+    // Data Forwarding from Memory Stage to Decode Stage (Branch resolution)
     assign forward_aD = (rsD != 0) && (rsD == write_regM) && reg_writeM;
     assign forward_bD = (rtD != 0) && (rtD == write_regM) && reg_writeM;
 
-    // 3. Hazard Detection
+    // Hazard Detection
     wire lw_stall = mem_to_regE && (write_regE != 0) && ((rsD == write_regE) || (rtD == write_regE));
     
     wire branch_stall = branchD && (
@@ -38,17 +38,15 @@ module hazard_unit (
         (mem_to_regM && (write_regM != 0) && (write_regM == rsD || write_regM == rtD))
     );
 
-    // --- CACHE MISS STALL DETECTION ---
+    // Cache Miss stall detection
     wire cache_stall = (mem_readM || mem_writeM) && (!cpu_ready);
 
-    // توقف کامل تمام مراحل پردازنده در زمان استال کش
     assign stallF = lw_stall || branch_stall || cache_stall;
     assign stallD = lw_stall || branch_stall || cache_stall;
     assign stallE = cache_stall;
     assign stallM = cache_stall;
-    assign stallW = cache_stall; // بسیار مهم: توقف مرحله WB
+    assign stallW = cache_stall; 
 
-    // مدیریت فلاش (در زمان استال کش نباید فلاش کنیم تا دیتا از بین نرود)
     assign flushD = 1'b0; 
     assign flushE = (lw_stall || branch_stall) && !cache_stall;
     assign flushW = 1'b0;

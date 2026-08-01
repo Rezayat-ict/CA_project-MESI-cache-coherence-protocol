@@ -2,13 +2,11 @@
 
 module dual_core_MESI_tb;
 
-    // Parameters
     parameter ADDR_WIDTH  = 32;
     parameter LINE_WIDTH  = 128;
     parameter WORD_COUNT  = 1024;
     parameter MEM_LATENCY = 2;
 
-    // Testbench signals
     reg clk;
     reg reset;
     wire bus_busy;
@@ -86,9 +84,9 @@ module dual_core_MESI_tb;
         $display("==================================================");
 
         if (test_pass)
-            $display("*************** TEST PASSED ***************");
+            $display("                TEST PASSED                ");
         else
-            $display("*************** TEST FAILED ***************");
+            $display("                TEST FAILED                ");
 
         $display("==================================================");
 

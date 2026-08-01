@@ -1,7 +1,7 @@
 `timescale 1ns/1ps
 `include "bus_defs.vh"
 
-module tb_person3_extended;
+module tb_memory_extended;
 
     reg clk;
     reg reset;
@@ -63,7 +63,7 @@ module tb_person3_extended;
     reg task_shared;
     integer guard;
 
-    person3_subsystem #(
+    memory_subsystem #(
         .MEM_LATENCY(2),
         .INIT_FILE("")
     ) dut (
@@ -355,9 +355,9 @@ module tb_person3_extended;
         end
 
         if (fail_flag)
-            $display("tb_person3_extended: FAILED");
+            $display("tb_memory_extended: FAILED");
         else
-            $display("tb_person3_extended: PASSED");
+            $display("tb_memory_extended: PASSED");
 
         #20;
         $finish;
@@ -372,7 +372,7 @@ module tb_person3_extended;
 
     initial begin
         #5000;
-        $display("tb_person3_extended: FAILED (global timeout)");
+        $display("tb_memory_extended: FAILED (global timeout)");
         $finish;
     end
 

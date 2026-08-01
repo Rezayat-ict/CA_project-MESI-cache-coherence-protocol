@@ -12,14 +12,14 @@ module dual_core_system #(
     input  wire         clk,
     input  wire         reset,
 
-    // Auxiliary signals for external monitoring 
     output wire         bus_busy,
     output wire         bus_owner
 );
 
     // ==========================================
-    // 1. Core 0 connection wires with instruction memory and its cache
+    // Core 0 connection wires with instruction memory and its cache
     // ==========================================
+
     wire [31:0] core0_pc;
     wire [31:0] core0_instruction;
     wire        core0_mem_read;
@@ -31,8 +31,9 @@ module dual_core_system #(
     wire        core0_mem_req = core0_mem_read | core0_mem_write;
 
     // ==========================================
-    // 2. Core 1 connection wires with instruction memory and its cache
+    // Core 1 connection wires with instruction memory and its cache
     // ==========================================
+
     wire [31:0] core1_pc;
     wire [31:0] core1_instruction;
     wire        core1_mem_read;
@@ -44,9 +45,9 @@ module dual_core_system #(
     wire        core1_mem_req = core1_mem_read | core1_mem_write;
 
     // ==========================================
-    // 3. Connection wires between cache adapters and the shared bus subsystem
+    // Connection wires between cache2bus adapters and the memory subsystem
     // ==========================================
-    // Cache 0 to Bus
+
     wire                  cache0_bus_req;
     wire [`BUS_CMD_WIDTH-1:0] cache0_bus_cmd;
     wire [ADDR_WIDTH-1:0] cache0_bus_addr;
@@ -56,7 +57,6 @@ module dual_core_system #(
     wire [LINE_WIDTH-1:0] cache0_bus_rdata;
     wire                  cache0_bus_shared;
 
-    // Snoop signals for Cache 0
     wire                  cache0_snoop_valid;
     wire [`BUS_CMD_WIDTH-1:0] cache0_snoop_cmd;
     wire [ADDR_WIDTH-1:0] cache0_snoop_addr;
@@ -65,7 +65,6 @@ module dual_core_system #(
     wire                  cache0_snoop_dirty;
     wire [LINE_WIDTH-1:0] cache0_snoop_data;
 
-    // Cache 1 to Bus
     wire                  cache1_bus_req;
     wire [`BUS_CMD_WIDTH-1:0] cache1_bus_cmd;
     wire [ADDR_WIDTH-1:0] cache1_bus_addr;
@@ -75,7 +74,6 @@ module dual_core_system #(
     wire [LINE_WIDTH-1:0] cache1_bus_rdata;
     wire                  cache1_bus_shared;
 
-    // Snoop signals for Cache 1
     wire                  cache1_snoop_valid;
     wire [`BUS_CMD_WIDTH-1:0] cache1_snoop_cmd;
     wire [ADDR_WIDTH-1:0] cache1_snoop_addr;
@@ -84,10 +82,10 @@ module dual_core_system #(
     wire                  cache1_snoop_dirty;
     wire [LINE_WIDTH-1:0] cache1_snoop_data;
 
+    // ==========================================
+    // Instantiate Processor Core 0
+    // ==========================================
 
-    // ==========================================
-    // 4. Instantiate Processor Core 0
-    // ==========================================
     mips_core core0 (
         .clk(clk),
         .rst(reset),
@@ -102,8 +100,9 @@ module dual_core_system #(
     );
 
     // ==========================================
-    // 5. Instantiate Instruction Memory 0
+    // Instantiate Instruction Memory 0
     // ==========================================
+
     instruction_memory #(
         .MEM_SIZE(256),
         .INIT_FILE(INIT_FILE_0)
@@ -112,10 +111,10 @@ module dual_core_system #(
         .instruction(core0_instruction)
     );
 
+    // ==========================================
+    // Instantiate Processor Core 1
+    // ==========================================
 
-    // ==========================================
-    // 6. Instantiate Processor Core 1
-    // ==========================================
     mips_core core1 (
         .clk(clk),
         .rst(reset),
@@ -130,8 +129,9 @@ module dual_core_system #(
     );
 
     // ==========================================
-    // 7. Instantiate Instruction Memory 1
+    // Instantiate Instruction Memory 1
     // ==========================================
+
     instruction_memory #(
         .MEM_SIZE(256),
         .INIT_FILE(INIT_FILE_1)
@@ -140,10 +140,10 @@ module dual_core_system #(
         .instruction(core1_instruction)
     );
 
+    // ==========================================
+    // Instantiate Cache2Bus Adapter 0 (for Core 0)
+    // ==========================================
 
-    // ==========================================
-    // 8. Instantiate Cache Bus Adapter 0 (for Core 0)
-    // ==========================================
     cache2_bus_adapter cache_adapter_0 (
         .clk(clk),
         .reset(reset),
@@ -152,7 +152,7 @@ module dual_core_system #(
         .cpu_addr(core0_mem_addr),
         .cpu_wdata(core0_mem_wdata),
         .cpu_rdata(core0_mem_rdata),
-        .cpu_ready(core0_mem_ready),
+        .cpu_ready(core0_mem_ready), // for connections to core 0
 
         .bus_req(cache0_bus_req),
         .bus_cmd(cache0_bus_cmd),
@@ -169,13 +169,13 @@ module dual_core_system #(
         .snoop_response_valid(cache0_snoop_response_valid),
         .snoop_hit(cache0_snoop_hit),
         .snoop_dirty(cache0_snoop_dirty),
-        .snoop_data(cache0_snoop_data)
+        .snoop_data(cache0_snoop_data) // for connections to memory subsystem
     );
 
+    // ==========================================
+    // Instantiate Cache2Bus Adapter 1 (for Core 1)
+    // ==========================================
 
-    // ==========================================
-    // 9. Instantiate Cache Bus Adapter 1 (for Core 1)
-    // ==========================================
     cache2_bus_adapter cache_adapter_1 (
         .clk(clk),
         .reset(reset),
@@ -184,7 +184,7 @@ module dual_core_system #(
         .cpu_addr(core1_mem_addr),
         .cpu_wdata(core1_mem_wdata),
         .cpu_rdata(core1_mem_rdata),
-        .cpu_ready(core1_mem_ready),
+        .cpu_ready(core1_mem_ready), // for connections to core 1
 
         .bus_req(cache1_bus_req),
         .bus_cmd(cache1_bus_cmd),
@@ -201,24 +201,23 @@ module dual_core_system #(
         .snoop_response_valid(cache1_snoop_response_valid),
         .snoop_hit(cache1_snoop_hit),
         .snoop_dirty(cache1_snoop_dirty),
-        .snoop_data(cache1_snoop_data)
+        .snoop_data(cache1_snoop_data) // for connections to memory subsystem
     );
 
+    // ==========================================
+    // Instantiate Memory Subsystem (Shared Bus + Main Memory)
+    // ==========================================
 
-    // ==========================================
-    // 10. Instantiate Memory & Bus Subsystem (Shared Bus + Main Memory)
-    // ==========================================
     memory_subsystem #(
         .ADDR_WIDTH(ADDR_WIDTH),
         .LINE_WIDTH(LINE_WIDTH),
         .WORD_COUNT(WORD_COUNT),
         .MEM_LATENCY(MEM_LATENCY),
-        .INIT_FILE("") // Initial data memory file if needed
+        .INIT_FILE("")
     ) mem_bus_subsystem (
         .clk(clk),
         .reset(reset),
 
-        // Connect Cache 0
         .cache0_req(cache0_bus_req),
         .cache0_cmd(cache0_bus_cmd),
         .cache0_addr(cache0_bus_addr),
@@ -228,7 +227,6 @@ module dual_core_system #(
         .cache0_rdata(cache0_bus_rdata),
         .cache0_shared(cache0_bus_shared),
 
-        // Connect Cache 1
         .cache1_req(cache1_bus_req),
         .cache1_cmd(cache1_bus_cmd),
         .cache1_addr(cache1_bus_addr),
@@ -238,7 +236,6 @@ module dual_core_system #(
         .cache1_rdata(cache1_bus_rdata),
         .cache1_shared(cache1_bus_shared),
 
-        // Snoop lines for Cache 0
         .cache0_snoop_valid(cache0_snoop_valid),
         .cache0_snoop_cmd(cache0_snoop_cmd),
         .cache0_snoop_addr(cache0_snoop_addr),
@@ -247,7 +244,6 @@ module dual_core_system #(
         .cache0_snoop_dirty(cache0_snoop_dirty),
         .cache0_snoop_data(cache0_snoop_data),
 
-        // Snoop lines for Cache 1
         .cache1_snoop_valid(cache1_snoop_valid),
         .cache1_snoop_cmd(cache1_snoop_cmd),
         .cache1_snoop_addr(cache1_snoop_addr),
@@ -256,7 +252,6 @@ module dual_core_system #(
         .cache1_snoop_dirty(cache1_snoop_dirty),
         .cache1_snoop_data(cache1_snoop_data),
 
-        // Bus status outputs
         .bus_busy(bus_busy),
         .bus_owner(bus_owner),
         .debug_bus_cmd(),

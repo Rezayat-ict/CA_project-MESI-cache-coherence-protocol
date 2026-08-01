@@ -1,7 +1,7 @@
 `timescale 1ns/1ps
 `include "bus_defs.vh"
 
-module tb_person3_subsystem;
+module tb_memory_subsystem;
 
     reg clk;
     reg reset;
@@ -61,7 +61,7 @@ module tb_person3_subsystem;
     reg first_grant_owner;
     reg second_grant_owner;
 
-    person3_subsystem #(
+    memory_subsystem #(
         .MEM_LATENCY(2),
         .INIT_FILE("")
     ) dut (
@@ -373,9 +373,9 @@ module tb_person3_subsystem;
         end
 
         if (fail_flag)
-            $display("tb_person3_subsystem: FAILED");
+            $display("tb_memory_subsystem: FAILED");
         else
-            $display("tb_person3_subsystem: PASSED");
+            $display("tb_memory_subsystem: PASSED");
 
         #20;
         $finish;

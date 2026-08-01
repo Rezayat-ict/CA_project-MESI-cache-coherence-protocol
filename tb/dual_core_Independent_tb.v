@@ -2,13 +2,11 @@
 
 module dual_core_Independent_tb;
 
-    // Parameters
     parameter ADDR_WIDTH  = 32;
     parameter LINE_WIDTH  = 128;
     parameter WORD_COUNT  = 1024;
     parameter MEM_LATENCY = 2;
 
-    // Testbench signals
     reg clk;
     reg reset;
     wire bus_busy;
@@ -94,12 +92,11 @@ module dual_core_Independent_tb;
         $display("\n==================================================");
 
         if (error_count == 0)
-            $display("*************** TEST PASSED ***************");
+           $display("                TEST PASSED                ");
         else begin
-           $display("*************** TEST FAILED ***************"); 
+           $display("                TEST FAILED                "); 
         end
 
-        $display("Total Errors : %0d", error_count);
         $display("==================================================");
 
         $finish;

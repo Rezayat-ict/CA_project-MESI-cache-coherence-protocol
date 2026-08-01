@@ -3,11 +3,9 @@ module mips_core (
     input  wire        clk,
     input  wire        rst,
     
-    // Instruction Memory Interface
     output wire [31:0] instr_addr,
     input  wire [31:0] instr_data,
     
-    // Data Cache Interface (Based on team agreement)
     output wire        mem_read,
     output wire        mem_write,
     output wire [31:0] mem_addr,
@@ -16,7 +14,6 @@ module mips_core (
     input  wire        cpu_ready
 );
 
-    // Pipeline Intermediate Signals
     reg  [31:0] pcF;
     wire [31:0] pc_next, pc_plus4F;
     
@@ -48,7 +45,6 @@ module mips_core (
     wire [1:0] forward_aE, forward_bE;
     wire forward_aD, forward_bD;
 
-    // Modules
     control_unit ctrl_unit(
         .opcode(instrD[31:26]), .funct(instrD[5:0]),
         .reg_write(reg_writeD), .reg_dst(reg_dstD), .alu_src(alu_srcD),
@@ -98,7 +94,7 @@ module mips_core (
     assign rtD = instrD[20:16];
     assign rdD = instrD[15:11];
     assign sign_immD = (instrD[31:26] == 6'b001101) ?
-                       {16'b0, instrD[15:0]} :
+                       {16'b0, instrD[15:0]} :          // zero extend for ORI
                        {{16{instrD[15]}}, instrD[15:0]};
 
     register_file rf_inst(

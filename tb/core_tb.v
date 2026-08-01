@@ -41,7 +41,6 @@ module core_tb;
         instr_data = instr_mem[instr_addr >> 2];
     end
 
-    // شبیه‌سازی تاخیر کش (بدون درگیری در خواندن دیتا)
     always @(posedge clk) begin
         if (rst) begin
             wait_cycles <= 0;
@@ -51,7 +50,6 @@ module core_tb;
                 if (wait_cycles == 0) wait_cycles <= 3;
                 else if (wait_cycles > 0) wait_cycles <= wait_cycles - 1;
                 
-                // فقط چاپ پیام و نوشتن در حافظه
                 if (wait_cycles == 1) begin
                     if (mem_write) begin
                         data_mem[mem_addr >> 2] <= mem_wdata;
@@ -67,7 +65,6 @@ module core_tb;
         end
     end
 
-    // لاجیک ترکیبی برای سیگنال Ready
     always @(*) begin
         if ((mem_read || mem_write) && (wait_cycles != 1))
             cpu_ready = 1'b0;
@@ -75,10 +72,8 @@ module core_tb;
             cpu_ready = 1'b1;
     end
 
-    // دیتای خوانده شده به صورت ترکیبی روی باس قرار می‌گیرد تا پردازنده بتواند آن را در لبه کلاک ذخیره کند
     assign mem_rdata = (mem_read && wait_cycles == 1) ? data_mem[mem_addr >> 2] : 32'd0;
 
-    // چاپ وضعیت برای دیباگ
     always @(posedge clk) begin
         if (!rst) begin
             $display("T=%0t | PC=%h Instr=%h | stallM=%b stallW=%b cpu_ready=%b",
@@ -87,15 +82,13 @@ module core_tb;
     end
 
     initial begin
-        // پر کردن حافظه داده با صفر
         for (i = 0; i < 64; i = i + 1) data_mem[i] = 0;
 
-        // بارگذاری برنامه
         instr_mem[0] = 32'h2001000f; // addi $1, $0, 15
         instr_mem[1] = 32'hac010004; // sw   $1, 4($0)
         instr_mem[2] = 32'h8c020004; // lw   $2, 4($0)
         instr_mem[3] = 32'h00221820; // add  $3, $1, $2
-        instr_mem[4] = 32'h08000004; // j    0x10 (حلقه بی‌نهایت برای توقف برنامه)
+        instr_mem[4] = 32'h08000004; // j    0x10 
 
         rst = 1;
         #15;
@@ -112,9 +105,9 @@ module core_tb;
         $display("========================================");
 
         if (uut.rf_inst.rf[3] == 32'd30)
-            $display("✅ Test PASSED: $3 = 30");
+            $display("Test PASSED: $3 = 30");
         else
-            $display("❌ Test FAILED: $3 = %0d (expected 30)", uut.rf_inst.rf[3]);
+            $display("Test FAILED: $3 = %0d (expected 30)", uut.rf_inst.rf[3]);
 
         $stop;
     end
