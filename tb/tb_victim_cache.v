@@ -47,6 +47,11 @@ module tb_victim_cache;
     reg [127:0] memory_lines [0:31];
 
     integer i;
+    integer tests_passed;
+    integer tests_failed;
+    reg     read_ok;
+    reg     write_ok;
+    reg     stage_ok;
 
     cache2_bus_adapter dut (
         .clk(clk),
@@ -148,9 +153,13 @@ module tb_victim_cache;
     end
 
     task automatic issue_read;
+        output success;
         input [31:0] address;
         input [31:0] expected_data;
+        reg success;
         begin
+            success = 1'b1;
+
             @(negedge clk);
             cpu_req   = 1'b1;
             cpu_write = 1'b0;
@@ -164,14 +173,13 @@ module tb_victim_cache;
             end
 
             if (!cpu_ready) begin
-                $display("tb_victim_cache: FAILED - read timeout at address %h", address);
-                $fatal;
+                $display("tb_victim_cache: read timeout at address %h", address);
+                success = 1'b0;
             end
-
-            if (cpu_rdata !== expected_data) begin
-                $display("tb_victim_cache: FAILED - read %h expected %h got %h",
+            else if (cpu_rdata !== expected_data) begin
+                $display("tb_victim_cache: read %h expected %h got %h",
                          address, expected_data, cpu_rdata);
-                $fatal;
+                success = 1'b0;
             end
 
             @(negedge clk);
@@ -181,9 +189,13 @@ module tb_victim_cache;
     endtask
 
     task automatic issue_write;
+        output success;
         input [31:0] address;
         input [31:0] data;
+        reg success;
         begin
+            success = 1'b1;
+
             @(negedge clk);
             cpu_req   = 1'b1;
             cpu_write = 1'b1;
@@ -197,8 +209,8 @@ module tb_victim_cache;
             end
 
             if (!cpu_ready) begin
-                $display("tb_victim_cache: FAILED - write timeout at address %h", address);
-                $fatal;
+                $display("tb_victim_cache: write timeout at address %h", address);
+                success = 1'b0;
             end
 
             @(negedge clk);
@@ -223,6 +235,20 @@ module tb_victim_cache;
         end
     endtask
 
+    task automatic check_test;
+        input condition;
+        begin
+            if (condition) begin
+                tests_passed = tests_passed + 1;
+                $display("PASS");
+            end
+            else begin
+                tests_failed = tests_failed + 1;
+                $display("FAIL");
+            end
+        end
+    endtask
+
     initial begin
         clk         = 1'b0;
         reset       = 1'b1;
@@ -234,61 +260,73 @@ module tb_victim_cache;
         snoop_cmd   = `BUS_NONE;
         snoop_addr  = 32'b0;
 
+        tests_passed = 0;
+        tests_failed = 0;
+        read_ok      = 1'b1;
+        write_ok     = 1'b1;
+        stage_ok     = 1'b1;
+
         for (i = 0; i < 32; i = i + 1)
             memory_lines[i] = {4{32'h10000000 + i}};
 
         #25;
         reset = 1'b0;
 
-        issue_read(32'h00000000, 32'h10000000);
-        issue_read(32'h00000040, 32'h10000004);
-        issue_read(32'h00000080, 32'h10000008);
-        issue_read(32'h000000C0, 32'h1000000C);
-        issue_read(32'h00000100, 32'h10000010);
+        $display("[TEST 1] Filling L1 cache");
+        $display("Expected: 5 compulsory misses");
+        stage_ok = 1'b1;
+        issue_read(read_ok, 32'h00000000, 32'h10000000); stage_ok = stage_ok && read_ok;
+        issue_read(read_ok, 32'h00000040, 32'h10000004); stage_ok = stage_ok && read_ok;
+        issue_read(read_ok, 32'h00000080, 32'h10000008); stage_ok = stage_ok && read_ok;
+        issue_read(read_ok, 32'h000000C0, 32'h1000000C); stage_ok = stage_ok && read_ok;
+        issue_read(read_ok, 32'h00000100, 32'h10000010); stage_ok = stage_ok && read_ok;
+        check_test(stage_ok && (memory_transaction_count == 5));
 
-        if (memory_transaction_count != 5) begin
-            $display("tb_victim_cache: FAILED - expected 5 compulsory memory/coherence transactions, got %0d",
-                     memory_transaction_count);
-            $fatal;
-        end
+        $display("");
+        $display("[TEST 2] Access evicted line");
+        $display("Expected: Victim Cache hit");
+        stage_ok = 1'b1;
+        issue_read(read_ok, 32'h00000000, 32'h10000000); stage_ok = stage_ok && read_ok;
+        check_test(stage_ok && (memory_transaction_count == 5));
 
-        issue_read(32'h00000000, 32'h10000000);
+        $display("");
+        $display("[TEST 3] Write to victim line");
+        $display("Expected: No memory transaction");
+        stage_ok = 1'b1;
+        issue_write(write_ok, 32'h00000000, 32'hDEADBEEF); stage_ok = stage_ok && write_ok;
+        check_test(stage_ok && (memory_transaction_count == 5));
 
-        if (memory_transaction_count != 5) begin
-            $display("tb_victim_cache: FAILED - victim hit accessed main memory or coherence path");
-            $fatal;
-        end
+        $display("");
+        $display("[TEST 4] Evict modified line");
+        $display("Expected: One write-back transaction");
+        stage_ok = 1'b1;
+        issue_read(read_ok, 32'h00000040, 32'h10000004); stage_ok = stage_ok && read_ok;
+        check_test(stage_ok && (memory_transaction_count == 6));
 
-        issue_write(32'h00000000, 32'hDEADBEEF);
+        $display("");
+        $display("[TEST 5] Access modified victim line");
+        $display("Expected: Victim Cache hit");
+        stage_ok = 1'b1;
+        issue_read(read_ok, 32'h00000000, 32'hDEADBEEF); stage_ok = stage_ok && read_ok;
+        check_test(stage_ok && (memory_transaction_count == 6));
 
-        if (memory_transaction_count != 5) begin
-            $display("tb_victim_cache: FAILED - E to M write hit accessed main memory or coherence path");
-            $fatal;
-        end
-
-        issue_read(32'h00000040, 32'h10000004);
-
-        if (memory_transaction_count != 6) begin
-            $display("tb_victim_cache: FAILED - modified eviction should require one writeback only");
-            $fatal;
-        end
-
-        issue_read(32'h00000000, 32'hDEADBEEF);
-
-        if (memory_transaction_count != 6) begin
-            $display("tb_victim_cache: FAILED - writeback-captured victim line missed");
-            $fatal;
-        end
-
+        $display("");
+        $display("[TEST 6] Snoop invalidation");
+        $display("Expected: Memory access required");
         send_snoop(`BUS_RDX, 32'h00000040);
-        issue_read(32'h00000040, 32'h10000004);
+        stage_ok = 1'b1;
+        issue_read(read_ok, 32'h00000040, 32'h10000004); stage_ok = stage_ok && read_ok;
+        check_test(stage_ok && (memory_transaction_count == 7));
 
-        if (memory_transaction_count != 7) begin
-            $display("tb_victim_cache: FAILED - snoop invalidation did not remove victim line");
-            $fatal;
-        end
-
-        $display("tb_victim_cache: PASSED");
+        $display("");
+        $display("========================================");
+        if (tests_failed == 0)
+            $display("tb_victim_cache: PASSED");
+        else
+            $display("tb_victim_cache: FAILED");
+        $display("Passed: %0d", tests_passed);
+        $display("Failed: %0d", tests_failed);
+        $display("========================================");
         $finish;
     end
 
